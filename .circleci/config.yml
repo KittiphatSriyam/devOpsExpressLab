@@ -36,7 +36,7 @@ jobs:
               echo "This is ${CIRCLE_BRANCH}"
             fi
           run: echo Done
-        - run:
+    - run:
         name: "Call to rancher to deploy"
         command: |
             docker run --rm -it \
