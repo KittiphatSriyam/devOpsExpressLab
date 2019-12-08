@@ -60,14 +60,14 @@ jobs:
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
               cp Dockerfile.production Dockerfile
-              docker build -t ima8/example-nodejs-circle:latest .
-              docker build -t ima8/example-nodejs-circle:${CIRCLE_SHA1} .
-              docker push ima8/example-nodejs-circle:latest
-              docker push ima8/example-nodejs-circle:${CIRCLE_SHA1}
+              docker build -t projozamak/devops-nodejs-circle:latest .
+              docker build -t projozamak/devops-nodejs-circle:${CIRCLE_SHA1} .
+              docker push projozamak/devops-nodejs-circle:latest
+              docker push projozamak/devops-nodejs-circle:${CIRCLE_SHA1}
             elif [ "${CIRCLE_BRANCH}" == "staging" ]; then
               cp Dockerfile.staging Dockerfile
-              docker build -t ima8/example-nodejs-circle-staging:latest .
-              docker push ima8/example-nodejs-circle-staging:latest
+              docker build -t projozamak/devops-nodejs-circle-staging:latest .
+              docker push projozamak/devops-nodejs-circle-staging:latest
             else
               echo "This is ${CIRCLE_BRANCH}"
             fi
@@ -86,7 +86,7 @@ jobs:
                 -e CATTLE_SECRET_KEY="$CATTLE_SECRET_KEY" \
                 -e CATTLE_URL="$CATTLE_URL" \
                 etlweather/gaucho upgrade $RANCHER_EXAMPLE_NODEJS \
-                --imageUuid 'docker:ima8/example-nodejs-circle:latest' \
+                --imageUuid 'docker:projozamak/devops-nodejs-circle:latest' \
                 --batch_size 3 --start_first \
                 --auto_complete --timeout 600 \
                 /
@@ -96,7 +96,7 @@ jobs:
                 -e CATTLE_SECRET_KEY="$CATTLE_SECRET_KEY" \
                 -e CATTLE_URL="$CATTLE_URL" \
                 etlweather/gaucho upgrade $RANCHER_EXAMPLE_NODEJS_STAGING \
-                --imageUuid 'docker:ima8/example-nodejs-circle-staging:latest' \
+                --imageUuid 'docker:projozamak/devops-nodejs-circle-staging:latest' \
                 --batch_size 1 --start_first \
                 --auto_complete --timeout 600 \
                 /
