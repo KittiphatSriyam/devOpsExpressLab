@@ -1,7 +1,12 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
 version: 2
 jobs:
   build:
     docker:
+      # specify the version you desire here
       - image: circleci/node:8.11.1-stretch
     working_directory: ~/repo
     steps:
@@ -9,20 +14,19 @@ jobs:
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "package.json" }}
-            # fallback
+            # fallback to using the latest cache if no exact match is found
             - v1-dependencies-
       - run: npm install
       - save_cache:
           paths:
             - node_modules
           key: v1-dependencies-{{ checksum "package.json" }}
-      - run: npm test
       - setup_remote_docker
       - run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
       - run:
           name: "Build docker image and push to docker hub"
           command: |
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then 
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
               cp Dockerfile.production Dockerfile
               docker build -t projozamak/devops-nodejs-circle:latest .
               docker build -t projozamak/devops-nodejs-circle:${CIRCLE_SHA1} .
@@ -31,20 +35,49 @@ jobs:
             elif [ "${CIRCLE_BRANCH}" == "staging" ]; then
               cp Dockerfile.staging Dockerfile
               docker build -t projozamak/devops-nodejs-circle-staging:latest .
-              docker push -t projozamak/devops-nodejs-circle-staging:${CIRCLE_SHA1} .
+              docker push projozamak/devops-nodejs-circle-staging:latest
             else
               echo "This is ${CIRCLE_BRANCH}"
             fi
-          run: echo Done
       - run:
           name: "Call to rancher to deploy"
           command: |
-            docker run --rm -it \
-              -e CATTLE_ACCESS_KEY="$CATTLE_ACCESS_KEY" \
-              -e CATTLE_SECRET_KEY="$CATTLE_SECRET_KEY" \
-              -e CATTLE_URL="$CATTLE_URL" \
-              etlweather/gaucho upgrade $RANCHER_EXAMPLE_NODEJS \
-              --imageUuid 'docker:projozamak/devops-nodejs-circle:latest' \
-              --batch_size 3 --start_first \
-              --auto_complete --timeout 600 \
-            /
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              docker run --rm -it \
+                -e CATTLE_ACCESS_KEY="$CATTLE_ACCESS_KEY" \
+                -e CATTLE_SECRET_KEY="$CATTLE_SECRET_KEY" \
+                -e CATTLE_URL="$CATTLE_URL" \
+                etlweather/gaucho upgrade $RANCHER_EXAMPLE_NODEJS \
+                --imageUuid 'docker:projozamak/devops-nodejs-circle:latest' \
+                --batch_size 3 --start_first \
+                --auto_complete --timeout 600 \
+                /
+            elif [ "${CIRCLE_BRANCH}" == "staging" ]; then
+               docker run --rm -it \
+                -e CATTLE_ACCESS_KEY="$CATTLE_ACCESS_KEY" \
+                -e CATTLE_SECRET_KEY="$CATTLE_SECRET_KEY" \
+                -e CATTLE_URL="$CATTLE_URL" \
+                etlweather/gaucho upgrade $RANCHER_EXAMPLE_NODEJS_STAGING \
+                --imageUuid 'docker:projozamak/devops-nodejs-circle-staging:latest' \
+                --batch_size 1 --start_first \
+                --auto_complete --timeout 600 \
+                /
+            else
+              echo "This is ${CIRCLE_BRANCH}"
+            fi
+      - run: echo Done
+  test:
+    docker:
+      - image: circleci/node:8.11.1-stretch
+    steps:
+      - checkout
+      # run tests!
+      - run: npm test
+workflows:
+  version: 2
+  build_test_ship_deploy:
+    jobs:
+      - test
+      - build:
+          requires:
+            - test
